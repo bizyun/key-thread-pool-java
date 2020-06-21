@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 
 /**
  * @author zhangbiyun
- * @date 2020/6/21
  */
 public final class LogUtils {
 

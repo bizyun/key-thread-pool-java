@@ -12,8 +12,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.bizyun.keythreadpool.MigrationLifecycle;
-
 /**
  * @author zhangbiyun
  * @date 2020/6/11

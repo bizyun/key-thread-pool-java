@@ -19,7 +19,6 @@ import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.bizyun.keythreadpool.MigrationLifecycle;
 import com.github.phantomthief.util.ThrowableSupplier;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;

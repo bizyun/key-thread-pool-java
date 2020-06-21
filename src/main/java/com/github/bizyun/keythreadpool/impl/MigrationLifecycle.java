@@ -1,10 +1,9 @@
-package com.github.bizyun.keythreadpool;
+package com.github.bizyun.keythreadpool.impl;
 
 /**
  * @author zhangbiyun
- * @date 2020/6/21
  */
-public interface MigrationLifecycle {
+interface MigrationLifecycle {
 
     int NORMAL = 0;
     int MIGRATING = 1;
