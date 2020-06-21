@@ -26,7 +26,6 @@ import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
  * @author zhangbiyun
- * @date 2020/6/7
  */
 class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecycle {
 

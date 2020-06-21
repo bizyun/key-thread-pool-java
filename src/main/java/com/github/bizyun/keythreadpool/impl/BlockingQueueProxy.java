@@ -6,7 +6,6 @@ import com.google.common.util.concurrent.ForwardingBlockingQueue;
 
 /**
  * @author zhangbiyun
- * @date 2020/6/11
  */
 class BlockingQueueProxy<E> extends ForwardingBlockingQueue<E> {
 

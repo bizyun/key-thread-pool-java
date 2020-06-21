@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * @author zhangbiyun
- * @date 2020/6/11
  */
 class BlockingQueueWrapper<E> implements MigrationLifecycle {
 

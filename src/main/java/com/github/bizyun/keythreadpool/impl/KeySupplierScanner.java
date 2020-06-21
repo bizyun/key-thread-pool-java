@@ -11,7 +11,6 @@ import com.github.bizyun.keythreadpool.KeySupplier;
 
 /**
  * @author zhangbiyun
- * @date 2020/6/13
  */
 class KeySupplierScanner {
 

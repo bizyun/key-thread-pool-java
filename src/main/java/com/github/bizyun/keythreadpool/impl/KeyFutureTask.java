@@ -10,7 +10,6 @@ import com.github.bizyun.keythreadpool.KeySupplier;
 
 /**
  * @author zhangbiyun
- * @date 2020/6/7
  */
 class KeyFutureTask<V> extends FutureTask<V> implements KeySupplier {
 
