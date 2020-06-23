@@ -3,5 +3,5 @@ package com.github.bizyun.keythreadpool;
 /**
  * @author zhangbiyun
  */
-public interface KeyRunner extends Runnable, KeySupplier {
+public interface KeyRunnable extends Runnable, KeySupplier {
 }

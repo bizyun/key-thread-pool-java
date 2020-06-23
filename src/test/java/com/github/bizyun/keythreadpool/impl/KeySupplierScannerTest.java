@@ -3,12 +3,13 @@ package com.github.bizyun.keythreadpool.impl;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
 import com.github.bizyun.keythreadpool.KeySupplier;
-import com.github.bizyun.keythreadpool.impl.testtask.TestKeyRunner;
+import com.github.bizyun.keythreadpool.impl.testtask.TestKeyRunnable;
 
 /**
  * @author zhangbiyun
@@ -18,7 +19,7 @@ class KeySupplierScannerTest {
 
     @Test
     void test1() {
-        TestKeyRunner testKeyRunner = new TestKeyRunner(1, new AtomicInteger());
+        TestKeyRunnable testKeyRunner = new TestKeyRunnable(1, new AtomicInteger(), 1, new ConcurrentHashMap<>());
         Runnable r1 = () -> testKeyRunner.run();
         KeySupplier keySupplier = new KeySupplierScanner().scan(r1);
         assertNotNull(keySupplier);
@@ -70,7 +71,7 @@ class KeySupplierScannerTest {
 
     @Test
     void test3() {
-        Runnable r1 = () -> new TestKeyRunner(1, new AtomicInteger()).run();
+        Runnable r1 = () -> new TestKeyRunnable(1, new AtomicInteger(), 1, new ConcurrentHashMap<>()).run();
         KeySupplier keySupplier = new KeySupplierScanner().scan(r1);
         assertNull(keySupplier);
     }

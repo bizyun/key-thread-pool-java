@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
-import com.github.bizyun.keythreadpool.KeyRunner;
+import com.github.bizyun.keythreadpool.KeyRunnable;
 import com.github.bizyun.keythreadpool.KeySupplier;
 import com.google.common.base.Preconditions;
 
@@ -131,7 +131,7 @@ public class KeyThreadPoolExecutor extends ThreadPoolExecutor {
         return new KeyFutureTask<>(callable);
     }
 
-    private static class KeyRunnableWrapper implements KeyRunner {
+    private static class KeyRunnableWrapper implements KeyRunnable {
 
         private final Runnable original;
         private final KeySupplier keySupplier;
