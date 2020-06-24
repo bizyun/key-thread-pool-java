@@ -204,7 +204,7 @@ class KeyThreadPoolExecutorTest {
         // 扩容线程数，缩容队列数
         poolSize.set(20);
         queueCount.set(2);
-        queueCapacity.set(200000);
+        queueCapacity.set(400000);
         for (int i = 0; i < taskCount; i++) {
             final int key = i % keyMod;
             final int value = i;
@@ -218,7 +218,7 @@ class KeyThreadPoolExecutorTest {
         // 缩容线程数，扩容队列数
         poolSize.set(3);
         queueCount.set(20);
-        queueCapacity.set(200100);
+        queueCapacity.set(400100);
         for (int i = 0; i < taskCount; i++) {
             final int key = i % keyMod;
             final int value = i;
