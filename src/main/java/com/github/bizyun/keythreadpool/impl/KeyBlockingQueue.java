@@ -26,7 +26,8 @@ import com.google.common.util.concurrent.Uninterruptibles;
 /**
  * @author zhangbiyun
  */
-class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<Runnable> {
+class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<Runnable>,
+        KeyQueue<Runnable> {
 
     private static final Logger logger = LoggerFactory.getLogger(KeyBlockingQueue.class);
 
@@ -304,12 +305,13 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         return false;
     }
 
-    public Runnable removeOldest(KeySupplier keySupplier) {
-        BlockingQueueWrapper<Runnable> queue = queuePool().selectQueue(keySupplier.getKey());
-        return queue.getQueue().poll();
-    }
-
     private long getKey(Runnable runnable) {
         return ((KeySupplier) runnable).getKey();
+    }
+
+    @Override
+    public Runnable poll(@Nonnull KeySupplier keySupplier) {
+        BlockingQueueWrapper<Runnable> queue = queuePool().selectQueue(keySupplier.getKey());
+        return queue.getQueue().poll();
     }
 }

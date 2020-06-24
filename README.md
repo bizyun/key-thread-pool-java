@@ -1,4 +1,6 @@
 # key-thread-pool-java
+[![Build Status](https://travis-ci.com/bizyun/key-thread-pool-java.svg?branch=master)](https://travis-ci.com/bizyun/key-thread-pool-java)
+[![Coverage Status](https://coveralls.io/repos/github/bizyun/key-thread-pool-java/badge.svg)](https://coveralls.io/github/bizyun/key-thread-pool-java)
 
 ## A key-aware threadPoolExecutorService implement
 - each submitted task must bind one key

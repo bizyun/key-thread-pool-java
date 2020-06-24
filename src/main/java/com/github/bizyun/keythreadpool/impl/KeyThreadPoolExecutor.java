@@ -185,8 +185,8 @@ public class KeyThreadPoolExecutor extends ThreadPoolExecutor {
         public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
             if (!executor.isShutdown()) {
                 BlockingQueue<Runnable> queue = executor.getQueue();
-                if (queue instanceof KeyBlockingQueue && r instanceof KeySupplier) {
-                    ((KeyBlockingQueue) queue).removeOldest((KeySupplier) r);
+                if (queue instanceof KeyQueue && r instanceof KeySupplier) {
+                    ((KeyQueue<Runnable>) queue).poll((KeySupplier) r);
                     executor.execute(r);
                 } else {
                     throw new IllegalStateException("is not KeyThreadPoolExecutor");
