@@ -31,6 +31,7 @@ import com.github.bizyun.keythreadpool.impl.testtask.TestKeyRunnable;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
  * @author zhangbiyun
@@ -96,6 +97,7 @@ class KeyThreadPoolExecutorTest {
                 keyExecutor.execute(() -> runner.run());
             });
         }
+        Uninterruptibles.sleepUninterruptibly(200, TimeUnit.MILLISECONDS);
 
         // 扩容线程数，缩容队列数
         poolSize.set(8);
@@ -108,6 +110,7 @@ class KeyThreadPoolExecutorTest {
                 keyExecutor.submit(() -> callable.call());
             });
         }
+        Uninterruptibles.sleepUninterruptibly(200, TimeUnit.MILLISECONDS);
 
         // 缩容线程数，扩容队列数
         poolSize.set(3);
@@ -211,6 +214,7 @@ class KeyThreadPoolExecutorTest {
                 keyExecutor.execute(() -> runner.run());
             });
         }
+        Uninterruptibles.sleepUninterruptibly(200, TimeUnit.MILLISECONDS);
 
         // 扩容线程数，缩容队列数
         poolSize.set(20);
@@ -225,6 +229,7 @@ class KeyThreadPoolExecutorTest {
                 keyExecutor.submit(() -> callable.call());
             });
         }
+        Uninterruptibles.sleepUninterruptibly(200, TimeUnit.MILLISECONDS);
 
         // 缩容线程数，扩容队列数
         poolSize.set(3);
