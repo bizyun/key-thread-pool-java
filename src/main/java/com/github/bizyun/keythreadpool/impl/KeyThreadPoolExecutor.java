@@ -12,6 +12,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
+import javax.annotation.Nonnull;
+
 import com.github.bizyun.keythreadpool.KeyRunnable;
 import com.github.bizyun.keythreadpool.KeySupplier;
 import com.google.common.base.Preconditions;
@@ -24,8 +26,9 @@ public class KeyThreadPoolExecutor extends ThreadPoolExecutor {
     private final IntSupplier poolSizeSupplier;
     private volatile boolean hasStartCoreThreads = false;
 
-    public static KeyThreadPoolExecutor newKeyThreadPool(IntSupplier poolSizeSupplier,
-            Supplier<BlockingQueue<Runnable>> queueSupplier, IntSupplier queueCountSupplier) {
+    public static KeyThreadPoolExecutor newKeyThreadPool(@Nonnull IntSupplier poolSizeSupplier,
+            @Nonnull Supplier<BlockingQueue<Runnable>> queueSupplier,
+            @Nonnull IntSupplier queueCountSupplier) {
         return new KeyThreadPoolExecutor(poolSizeSupplier.getAsInt(),
                 poolSizeSupplier,
                 Executors.defaultThreadFactory(),
@@ -34,9 +37,10 @@ public class KeyThreadPoolExecutor extends ThreadPoolExecutor {
                 queueCountSupplier);
     }
 
-    public static KeyThreadPoolExecutor newKeyThreadPool(IntSupplier poolSizeSupplier,
-            ThreadFactory threadFactory, Supplier<BlockingQueue<Runnable>> queueSupplier,
-            IntSupplier queueCountSupplier) {
+    public static KeyThreadPoolExecutor newKeyThreadPool(@Nonnull IntSupplier poolSizeSupplier,
+            @Nonnull ThreadFactory threadFactory,
+            @Nonnull Supplier<BlockingQueue<Runnable>> queueSupplier,
+            @Nonnull IntSupplier queueCountSupplier) {
         return new KeyThreadPoolExecutor(poolSizeSupplier.getAsInt(),
                 poolSizeSupplier,
                 threadFactory,
@@ -45,9 +49,10 @@ public class KeyThreadPoolExecutor extends ThreadPoolExecutor {
                 queueCountSupplier);
     }
 
-    public static KeyThreadPoolExecutor newKeyThreadPool(IntSupplier poolSizeSupplier,
-            Supplier<BlockingQueue<Runnable>> queueSupplier, IntSupplier queueCountSupplier,
-            RejectedExecutionHandler handler) {
+    public static KeyThreadPoolExecutor newKeyThreadPool(@Nonnull IntSupplier poolSizeSupplier,
+            @Nonnull Supplier<BlockingQueue<Runnable>> queueSupplier,
+            @Nonnull IntSupplier queueCountSupplier,
+            @Nonnull RejectedExecutionHandler handler) {
         return new KeyThreadPoolExecutor(poolSizeSupplier.getAsInt(),
                 poolSizeSupplier,
                 Executors.defaultThreadFactory(),
@@ -56,9 +61,11 @@ public class KeyThreadPoolExecutor extends ThreadPoolExecutor {
                 queueCountSupplier);
     }
 
-    public static KeyThreadPoolExecutor newKeyThreadPool(IntSupplier poolSizeSupplier,
-            ThreadFactory threadFactory, Supplier<BlockingQueue<Runnable>> queueSupplier,
-            IntSupplier queueCountSupplier, RejectedExecutionHandler handler) {
+    public static KeyThreadPoolExecutor newKeyThreadPool(@Nonnull IntSupplier poolSizeSupplier,
+            @Nonnull ThreadFactory threadFactory,
+            @Nonnull Supplier<BlockingQueue<Runnable>> queueSupplier,
+            @Nonnull IntSupplier queueCountSupplier,
+            @Nonnull RejectedExecutionHandler handler) {
         return new KeyThreadPoolExecutor(poolSizeSupplier.getAsInt(),
                 poolSizeSupplier,
                 threadFactory,

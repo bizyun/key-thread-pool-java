@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.bizyun.keythreadpool.KeySupplier;
 import com.github.phantomthief.util.ThrowableConsumer;
+import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Uninterruptibles;
 
 /**
@@ -42,9 +43,10 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
 
     public KeyBlockingQueue(Supplier<BlockingQueue<Runnable>> queueSupplier,
             IntSupplier queueCountSupplier) {
+        this.curQueueCount = queueCountSupplier.getAsInt();
+        Preconditions.checkArgument(this.curQueueCount > 0, "queue count <= 0");
         this.queueCountSupplier = queueCountSupplier;
         this.queueSupplier = queueSupplier;
-        this.curQueueCount = queueCountSupplier.getAsInt();
         this.queuePoolSupplier = memoize(() -> new QueuePool<>(queueSupplier, this.curQueueCount));
     }
 
@@ -179,7 +181,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
     private void tryExpandOrShrink() {
         QueuePool<Runnable> pool = queuePool();
         int queueCount = this.queueCountSupplier.getAsInt();
-        if (queueCount != this.curQueueCount && expandOrShrink.compareAndSet(false, true)) {
+        if (queueCount > 0 && queueCount != this.curQueueCount && expandOrShrink.compareAndSet(false, true)) {
             debugLog(logger, "[expandOrShrink] start, oldQueueCount:{}, newQueueCount:{}, " +
                     "pool:{}", this.curQueueCount, queueCount, pool);
             this.curQueueCount = queueCount;

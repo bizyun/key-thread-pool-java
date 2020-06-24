@@ -3,11 +3,19 @@ package com.github.bizyun.keythreadpool.impl;
 import static com.github.bizyun.keythreadpool.impl.KeyThreadPoolExecutor.newKeyThreadPool;
 import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTermination;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -16,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
+import com.github.bizyun.keythreadpool.KeyRunnable;
+import com.github.bizyun.keythreadpool.KeySupplier;
 import com.github.bizyun.keythreadpool.impl.testtask.TestKeyCallable;
 import com.github.bizyun.keythreadpool.impl.testtask.TestKeyRunnable;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -115,6 +125,7 @@ class KeyThreadPoolExecutorTest {
         assertEquals(3, ((KeyThreadPoolExecutor) keyExecutor).getCorePoolSize());
         shutdownAndAwaitTermination(keyExecutor, 1, TimeUnit.HOURS);
         assertEquals(taskCount * 8, runTaskCount.get());
+        assertEquals(taskCount * 8, ((KeyThreadPoolExecutor) keyExecutor).getCompletedTaskCount());
         assertEquals(taskCount, callbackCount.get());
         assertEquals(taskCount, consumerRecords.size());
         for (int i = 0; i < taskCount; i++) {
@@ -231,6 +242,7 @@ class KeyThreadPoolExecutorTest {
         assertEquals(3, ((KeyThreadPoolExecutor) keyExecutor).getCorePoolSize());
         shutdownAndAwaitTermination(keyExecutor, 1, TimeUnit.HOURS);
         assertEquals(taskCount * 8, runTaskCount.get());
+        assertEquals(taskCount * 8, ((KeyThreadPoolExecutor) keyExecutor).getCompletedTaskCount());
         assertEquals(taskCount, callbackCount.get());
         assertEquals(keyMod, consumerRecords.size());
         for (int j = 0; j < 8; j++) {
@@ -240,5 +252,170 @@ class KeyThreadPoolExecutorTest {
                 assertEquals(i, records.poll());
             }
         }
+    }
+
+    @Test
+    void test3() throws InterruptedException {
+        AtomicInteger poolSize = new AtomicInteger(10);
+        AtomicInteger queueCapacity = new AtomicInteger(1);
+        AtomicInteger queueCount = new AtomicInteger(100);
+
+        ExecutorService keyExecutor = newKeyThreadPool(() -> poolSize.get(),
+                () -> new LinkedBlockingQueue<>(queueCapacity.get()), () -> queueCount.get());
+        CountDownLatch latch = new CountDownLatch(10);
+        for (int i = 0; i < 100; i++) {
+            final int k = i;
+            keyExecutor.execute(new KeyRunnable() {
+                @Override
+                public long getKey() {
+                    return k;
+                }
+
+                @Override
+                public void run() {
+                    latch.countDown();
+                    try {
+                        Thread.sleep(1000000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+        }
+        latch.await();
+        List<Runnable> list = keyExecutor.shutdownNow();
+        assertEquals(90, list.size());
+        keyExecutor.awaitTermination(1, TimeUnit.HOURS);
+        long completedTaskCount = ((KeyThreadPoolExecutor) keyExecutor).getCompletedTaskCount();
+        assertEquals(10, completedTaskCount);
+    }
+
+    @Test
+    void test4() throws InterruptedException {
+        ExecutorService keyExecutor = newKeyThreadPool(() -> 2,
+                () -> new LinkedBlockingQueue<>(1), () -> 2,
+               new KeyThreadPoolExecutor.DiscardOldestPolicy());
+
+        CountDownLatch latch = new CountDownLatch(2);
+        BlockingQueue<Runnable> queue = ((KeyThreadPoolExecutor) keyExecutor).getQueue();
+        for (int i = 0; i < 101; i++) {
+            final int k = i;
+            keyExecutor.execute(new KeyRunnable() {
+                @Override
+                public long getKey() {
+                    return k;
+                }
+
+                @Override
+                public void run() {
+                    latch.countDown();
+                    try {
+                        Thread.sleep(100000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+            if (i == 1) {
+                latch.await();
+            }
+            if (i <= 1) {
+                continue;
+            }
+            assertNull(queue.poll());
+            assertNull(queue.poll(2, TimeUnit.MILLISECONDS));
+            if (i == 2) {
+                assertEquals(1, queue.size());
+                Runnable next = queue.iterator().next();
+                assertEquals(2, ((KeySupplier) next).getKey());
+            }
+            if (i >= 3) {
+                if (i % 2 == 1) {
+                    checkQueue(queue, i-1, i);
+                } else {
+                    checkQueue(queue, i, i - 1);
+                }
+            }
+        }
+        List<Runnable> list = new ArrayList<>();
+        queue.drainTo(list);
+        assertEquals(2, list.size());
+        keyExecutor.shutdownNow();
+        keyExecutor.awaitTermination(1, TimeUnit.HOURS);
+    }
+
+    @Test
+    void test5() throws InterruptedException {
+        ExecutorService keyExecutor = newKeyThreadPool(() -> 1,
+                () -> new LinkedBlockingQueue<>(), () -> 3);
+
+        CountDownLatch latch = new CountDownLatch(1);
+        BlockingQueue<Runnable> queue = ((KeyThreadPoolExecutor) keyExecutor).getQueue();
+        for (int i = 0; i < 100; i++) {
+            final int k = i;
+            keyExecutor.execute(new KeyRunnable() {
+                @Override
+                public long getKey() {
+                    return k;
+                }
+
+                @Override
+                public void run() {
+                    if (k == 0) {
+                        latch.countDown();
+                        try {
+                            Thread.sleep(100000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                }
+            });
+            if (i == 0) {
+                latch.await();
+            }
+        }
+        Runnable task1 = queue.poll(2, TimeUnit.MILLISECONDS);
+        assertNotNull(task1);
+        Runnable task2 = queue.poll();
+        assertNotNull(task2);
+        Runnable task3 = queue.poll();
+        assertNull(task3);
+        task3 = queue.poll(2, TimeUnit.MILLISECONDS);
+        assertNull(task3);
+        task1.run();
+        task3 = queue.poll();
+        assertNotNull(task3);
+        Runnable task4 = queue.poll();
+        assertNull(task4);
+        task2.run();
+        Runnable task5 = queue.take();
+        assertNotNull(task5);
+        task4 = queue.poll();
+        assertNull(task4);
+        task5.run();
+        task4 = queue.poll();
+        assertNotNull(task4);
+        assertNull(queue.peek());
+        task4.run();
+        assertNotNull(queue.peek());
+        task4 = queue.poll();
+        assertNotNull(task4);
+
+        assertTrue(queue.size() > 0);
+        queue.clear();
+        assertTrue(queue.size() == 0);
+
+        keyExecutor.shutdownNow();
+        keyExecutor.awaitTermination(1, TimeUnit.HOURS);
+    }
+
+    private void checkQueue(BlockingQueue<Runnable> queue, int i2, int i3) {
+        assertEquals(2, queue.size());
+        Iterator<Runnable> iterator = queue.iterator();
+        Runnable next = iterator.next();
+        assertEquals(i2, ((KeySupplier) next).getKey());
+        next = iterator.next();
+        assertEquals(i3, ((KeySupplier) next).getKey());
     }
 }
