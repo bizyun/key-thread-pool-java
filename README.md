@@ -1,6 +1,6 @@
 # key-thread-pool-java
 [![Build Status](https://travis-ci.com/bizyun/key-thread-pool-java.svg?branch=master)](https://travis-ci.com/bizyun/key-thread-pool-java)
-[![Coverage Status](https://coveralls.io/repos/github/bizyun/key-thread-pool-java/badge.svg)](https://coveralls.io/github/bizyun/key-thread-pool-java)
+[![Coverage Status](https://coveralls.io/repos/github/bizyun/key-thread-pool-java/badge.svg?branch=master)](https://coveralls.io/github/bizyun/key-thread-pool-java?branch=master)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/bizyun/key-thread-pool-java.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bizyun/key-thread-pool-java/alerts/)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/bizyun/key-thread-pool-java.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bizyun/key-thread-pool-java/context:java)
 
