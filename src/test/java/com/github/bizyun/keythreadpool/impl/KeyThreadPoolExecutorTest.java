@@ -5,6 +5,7 @@ import static com.google.common.util.concurrent.MoreExecutors.shutdownAndAwaitTe
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -413,6 +415,71 @@ class KeyThreadPoolExecutorTest {
 
         keyExecutor.shutdownNow();
         keyExecutor.awaitTermination(1, TimeUnit.HOURS);
+    }
+
+    @Test
+    void test6() {
+        assertThrows(IllegalArgumentException.class, () -> newKeyThreadPool(() -> 1,
+                () -> new LinkedBlockingQueue<>(), () -> 3,
+                new ThreadPoolExecutor.DiscardOldestPolicy()));
+
+        assertThrows(IllegalArgumentException.class, () -> newKeyThreadPool(() -> 1,
+                () -> new LinkedBlockingQueue<>(), () -> 3,
+                new ThreadPoolExecutor.CallerRunsPolicy()));
+
+        assertThrows(IllegalArgumentException.class, () -> newKeyThreadPool(() -> 0,
+                () -> new LinkedBlockingQueue<>(),
+                () -> 1));
+
+        assertThrows(IllegalArgumentException.class, () -> newKeyThreadPool(() -> 1,
+                () -> new LinkedBlockingQueue<>(),
+                () -> 0));
+
+        KeyThreadPoolExecutor keyExecutor = newKeyThreadPool(() -> 1,
+                () -> new LinkedBlockingQueue<>(),
+                () -> 1);
+
+        assertThrows(IllegalArgumentException.class, () ->
+                keyExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy()));
+    }
+
+    @Test
+    void test7() throws InterruptedException {
+        AtomicInteger queueCount = new AtomicInteger(5);
+        AtomicInteger queueCapacity = new AtomicInteger(10);
+        KeyThreadPoolExecutor keyExecutor = newKeyThreadPool(() -> 1,
+                () -> new LinkedBlockingQueue<>(queueCapacity.get()),
+                queueCount::get);
+        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch latch1 = new CountDownLatch(1);
+        AtomicInteger runTaskCount = new AtomicInteger();
+        for (int i = 0; i < 50; i++) {
+            final int k = i;
+            keyExecutor.execute(new KeyRunnable() {
+                @Override
+                public long getKey() {
+                    return k;
+                }
+
+                @Override
+                public void run() {
+                    try {
+                        latch1.countDown();
+                        latch.await();
+                        runTaskCount.getAndIncrement();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+            });
+        }
+        latch1.await();
+        queueCount.set(1);
+        queueCapacity.set(20);
+        latch.countDown();
+        MoreExecutors.shutdownAndAwaitTermination(keyExecutor, 1, TimeUnit.HOURS);
+        assertEquals(21, runTaskCount.get());
+        assertEquals(21, keyExecutor.getCompletedTaskCount());
     }
 
     private void checkQueue(BlockingQueue<Runnable> queue, int i2, int i3) {

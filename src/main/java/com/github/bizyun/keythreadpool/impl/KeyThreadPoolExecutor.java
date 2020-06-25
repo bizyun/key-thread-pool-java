@@ -138,6 +138,12 @@ public class KeyThreadPoolExecutor extends ThreadPoolExecutor {
         return new KeyFutureTask<>(callable);
     }
 
+    @Override
+    public void setRejectedExecutionHandler(RejectedExecutionHandler handler) {
+        super.setRejectedExecutionHandler(handler);
+        checkNotSupportPolicy(handler);
+    }
+
     private static class KeyRunnableWrapper implements KeyRunnable {
 
         private final Runnable original;
