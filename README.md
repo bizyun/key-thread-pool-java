@@ -4,11 +4,11 @@
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/bizyun/key-thread-pool-java.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bizyun/key-thread-pool-java/alerts/)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/bizyun/key-thread-pool-java.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/bizyun/key-thread-pool-java/context:java)
 
-## A key-aware threadPoolExecutorService implement
+## A key-aware threadPoolExecutorService implementation
 - each submitted task must bind one key
 - all tasks with same key will put in same queue executed sequence
-- can expand or shrink queue count and change queue capacity dynamically
-- can change core-thread size dynamically
+- expand or shrink queue count and change queue capacity dynamically
+- change core-thread size dynamically
 
 ## Usage
 
