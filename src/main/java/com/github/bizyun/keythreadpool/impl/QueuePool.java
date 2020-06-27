@@ -55,7 +55,8 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
         return doBindQueue(() -> {
             BlockingQueueWrapper<E> queue = qq.take();
             if (isMigrated()) {
-                assert queue.getQueue().isEmpty() && queue.isMigrated();
+                // producer may put element when migrated, so migrated queue maybe not empty
+                assert queue.isMigrated();
                 qq.offer(queue);
                 debugLog(logger, "[bindQueue-take] pool-{} is migrated, {}", poolId, queue);
                 throw new InterruptedException();
@@ -70,7 +71,7 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
             BlockingQueueWrapper<E> queue = qq.poll();
             if (isMigrated()) {
                 if (queue != null) {
-                    assert queue.getQueue().isEmpty() && queue.isMigrated();
+                    assert queue.isMigrated();
                     qq.offer(queue);
                 }
                 debugLog(logger, "[bindQueue-poll] pool-{} is migrated, {}", poolId, queue);
@@ -86,7 +87,7 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
             BlockingQueueWrapper<E> queue = qq.poll(timeout, unit);
             if (isMigrated()) {
                 if (queue != null) {
-                    assert queue.getQueue().isEmpty() && queue.isMigrated();
+                    assert queue.isMigrated();
                     qq.offer(queue);
                 }
                 debugLog(logger, "[bindQueue-pollTimeout] pool-{} is migrated, {}", poolId,
