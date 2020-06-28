@@ -20,7 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.bizyun.keythreadpool.KeySupplier;
-import com.github.phantomthief.util.ThrowableFunction;
+import com.github.phantomthief.util.ThrowablePredicate;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.Uninterruptibles;
 
@@ -63,24 +63,8 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
     @Override
     public void put(@Nonnull Runnable runnable) throws InterruptedException {
         addAndMark(runnable, queue -> {
-            if (queue.getQueue().offer(runnable, 1, TimeUnit.SECONDS)) {
-                return true;
-            }
-            if (queue.isMigrating() || queue.isMigrated()) {
-                return null;
-            }
-            // put-operation maybe blocked forever when old queue is migrated and no consumer take
-            // from old queue
-            queue.getMigrateLock().readLock().lock();
-            try {
-                if (!queue.isMigrated()) {
-                    queue.getQueue().put(runnable);
-                    return true;
-                }
-                return null;
-            } finally {
-                queue.getMigrateLock().readLock().unlock();
-            }
+            queue.getQueue().put(runnable);
+            return true;
         });
     }
 
@@ -96,16 +80,12 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
 
 
     private <T extends Throwable> boolean addAndMark(Runnable runnable,
-            ThrowableFunction<BlockingQueueWrapper<Runnable>, Boolean, T> putQueueFunction) throws T {
+            ThrowablePredicate<BlockingQueueWrapper<Runnable>, T> predicate) throws T {
         while (true) {
             isExpandOrShrink();
             QueuePool<Runnable> pool = queuePool();
             BlockingQueueWrapper<Runnable> queue = pool.selectQueue(getKey(runnable));
-            Boolean result = putQueueFunction.apply(queue);
-            if (result == null) {
-                continue;
-            }
-            if (!result.booleanValue()) {
+            if (!predicate.test(queue)) {
                 return false;
             }
             if (queue.isMigrating() || queue.isMigrated()) {
@@ -195,8 +175,14 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
             if (isMigratedThenUnbind(pool, queue)) {
                 continue;
             }
-            Runnable runnable = queue.getQueue().poll(timeout, unit);
-            assert runnable != null;
+            Runnable runnable;
+            try {
+                runnable = queue.getQueue().poll(timeout, unit);
+                assert runnable != null;
+            } catch (InterruptedException e) {
+                pool.unbindQueue(queue);
+                throw e;
+            }
             return () -> {
                 try {
                     runnable.run();
@@ -283,41 +269,8 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
 
     private void migrateOneQueue(BlockingQueueWrapper<Runnable> queue) {
         QueuePool<Runnable> backupPool = this.backupQueuePoolSupplier.get();
-        boolean interrupted = false;
-
         queue.startMigrating();
-        try {
-            while (true) {
-                debugLog(logger, "[migrateOneQueue] {}", queue);
-                // some producer with readLock locked may blocked on put-operation, so migrate
-                // first and then use writeLock tryLock
-                doMigrateOneQueue(queue, backupPool);
-                try {
-                    if (queue.getMigrateLock().writeLock().tryLock(5, TimeUnit.MILLISECONDS)) {
-                        try {
-                            doMigrateOneQueue(queue, backupPool);
-                            queue.stopMigrating();
-                            debugLog(logger, "[migrateOneQueue] complete, {}", queue);
-                            return;
-                        } finally {
-                            queue.getMigrateLock().writeLock().unlock();
-                        }
-                    } else {
-                        debugLog(logger, "[migrateOneQueue] writeLock.tryLock failed, {}",
-                                queue);
-                    }
-                } catch (InterruptedException e) {
-                    interrupted = true;
-                }
-            }
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
-            }
-        }
-    }
-
-    private void doMigrateOneQueue(BlockingQueueWrapper<Runnable> queue, QueuePool<Runnable> backupPool) {
+        debugLog(logger, "[migrateOneQueue] {}", queue);
         for (Runnable r; (r = queue.getQueue().poll()) != null; ) {
             BlockingQueueWrapper<Runnable> backupQueue = backupPool.selectQueue(getKey(r));
             if (!backupQueue.getQueue().offer(r)) {
@@ -327,6 +280,8 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
             backupPool.markQueueNotIdle(backupQueue);
 //            debugLog(logger, "[migrateOneQueue] backupQueue:{}", backupQueue);
         }
+        debugLog(logger, "[migrateOneQueue] complete {}", queue);
+        queue.stopMigrating();
     }
 
 

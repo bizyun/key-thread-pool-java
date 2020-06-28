@@ -6,8 +6,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +22,6 @@ class BlockingQueueWrapper<E> implements MigrationLifecycle {
     private final BlockingQueueProxy<E> queue;
     private final AtomicBoolean idle = new AtomicBoolean(true);
     private final AtomicReference<Thread> bindThread = new AtomicReference<>();
-    private final ReadWriteLock migrateLock = new ReentrantReadWriteLock();
     private final AtomicInteger state = new AtomicInteger(NORMAL);
 
     public BlockingQueueWrapper(BlockingQueue<E> queue, int poolId, int queueId) {
@@ -52,10 +49,6 @@ class BlockingQueueWrapper<E> implements MigrationLifecycle {
 
     public AtomicBoolean getIdle() {
         return idle;
-    }
-
-    public ReadWriteLock getMigrateLock() {
-        return migrateLock;
     }
 
     @Override
