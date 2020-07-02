@@ -27,33 +27,33 @@ import com.google.common.util.concurrent.Uninterruptibles;
 /**
  * @author zhangbiyun
  */
-class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecycle {
+class QueuePool<E> implements Iterable<BlockingQueueHolder<E>>, MigrationLifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(QueuePool.class);
     private static final AtomicInteger POOL_ID = new AtomicInteger();
 
     private final int poolId;
     private final AtomicInteger state = new AtomicInteger(NORMAL);
-    private final List<BlockingQueueWrapper<E>> queueList;
-    private final BlockingQueue<BlockingQueueWrapper<E>> qq;
+    private final List<BlockingQueueHolder<E>> queueList;
+    private final BlockingQueue<BlockingQueueHolder<E>> qq;
 
     public QueuePool(Supplier<BlockingQueue<E>> queueSupplier, int queueCount) {
         this.poolId = POOL_ID.getAndIncrement();
-        List<BlockingQueueWrapper<E>> qList = new ArrayList<>(queueCount);
+        List<BlockingQueueHolder<E>> qList = new ArrayList<>(queueCount);
         for (int i = 0; i < queueCount; i++) {
-            qList.add(new BlockingQueueWrapper<>(queueSupplier.get(), poolId, i));
+            qList.add(new BlockingQueueHolder<>(queueSupplier.get(), poolId, i));
         }
         this.queueList = ImmutableList.copyOf(qList);
         this.qq = new LinkedBlockingQueue<>();
     }
 
-    public BlockingQueueWrapper<E> selectQueue(long key) {
+    public BlockingQueueHolder<E> selectQueue(long key) {
         return queueList.get((int) (key % queueList.size()));
     }
 
-    public BlockingQueueWrapper<E> bindQueueBlock() throws InterruptedException {
+    public BlockingQueueHolder<E> bindQueueBlock() throws InterruptedException {
         return doBindQueue(() -> {
-            BlockingQueueWrapper<E> queue = qq.take();
+            BlockingQueueHolder<E> queue = qq.take();
             if (isMigrated()) {
                 // producer may put element when migrated, so migrated queue maybe not empty
                 assert queue.isMigrated();
@@ -66,9 +66,9 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
     }
 
     @Nullable
-    public BlockingQueueWrapper<E> bindQueue() {
+    public BlockingQueueHolder<E> bindQueue() {
         return doBindQueue(() -> {
-            BlockingQueueWrapper<E> queue = qq.poll();
+            BlockingQueueHolder<E> queue = qq.poll();
             if (isMigrated()) {
                 if (queue != null) {
                     assert queue.isMigrated();
@@ -82,9 +82,9 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
     }
 
     @Nullable
-    public BlockingQueueWrapper<E> bindQueue(long timeout, TimeUnit unit) throws InterruptedException {
+    public BlockingQueueHolder<E> bindQueue(long timeout, TimeUnit unit) throws InterruptedException {
         return doBindQueue(() -> {
-            BlockingQueueWrapper<E> queue = qq.poll(timeout, unit);
+            BlockingQueueHolder<E> queue = qq.poll(timeout, unit);
             if (isMigrated()) {
                 if (queue != null) {
                     assert queue.isMigrated();
@@ -99,9 +99,9 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
     }
 
     @Nullable
-    public BlockingQueueWrapper<E> bindQueueForMigrating() {
+    public BlockingQueueHolder<E> bindQueueForMigrating() {
         assert isMigrating() || isMigrated();
-        for (BlockingQueueWrapper<E> queue : queueList) {
+        for (BlockingQueueHolder<E> queue : queueList) {
             if (queue.isMigrating() || queue.isMigrated()) {
                 continue;
             }
@@ -115,11 +115,11 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
         return null;
     }
 
-    private <T extends Throwable> BlockingQueueWrapper<E> doBindQueue(
-            ThrowableSupplier<BlockingQueueWrapper<E>, T> queueSupplier) throws T {
+    private <T extends Throwable> BlockingQueueHolder<E> doBindQueue(
+            ThrowableSupplier<BlockingQueueHolder<E>, T> queueSupplier) throws T {
         outer:
         while (true) {
-            BlockingQueueWrapper<E> queue = queueSupplier.get();
+            BlockingQueueHolder<E> queue = queueSupplier.get();
             if (queue == null) {
                 return null;
             }
@@ -140,7 +140,7 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
         }
     }
 
-    private boolean isNotEmpty(BlockingQueueWrapper<E> queue) {
+    private boolean isNotEmpty(BlockingQueueHolder<E> queue) {
         if (!queue.getQueue().isEmpty()) {
             return true;
         }
@@ -153,36 +153,36 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
     }
 
     public E peek() {
-        BlockingQueueWrapper<E> queue = qq.peek();
+        BlockingQueueHolder<E> queue = qq.peek();
         if (queue == null) {
             return null;
         }
         return queue.getQueue().peek();
     }
 
-    public void unbindQueue(BlockingQueueWrapper<E> queue) {
+    public void unbindQueue(BlockingQueueHolder<E> queue) {
         putQueueUninterrupted(queue.unbind());
     }
 
-    private void putQueueUninterrupted(BlockingQueueWrapper<E> queue) {
+    private void putQueueUninterrupted(BlockingQueueHolder<E> queue) {
         Uninterruptibles.putUninterruptibly(qq, queue);
     }
 
-    public void markQueueNotIdle(BlockingQueueWrapper<E> queue) {
+    public void markQueueNotIdle(BlockingQueueHolder<E> queue) {
         if (queue.getIdle().compareAndSet(true, false)) {
             putQueueUninterrupted(queue);
         }
     }
 
     public void clear() {
-        for (BlockingQueueWrapper<E> queue : queueList) {
+        for (BlockingQueueHolder<E> queue : queueList) {
             queue.getQueue().clear();
         }
     }
 
     public int remainingCapacity() {
         long count = 0;
-        for (BlockingQueueWrapper<E> queue : queueList) {
+        for (BlockingQueueHolder<E> queue : queueList) {
             count += queue.getQueue().remainingCapacity();
         }
         if (count > Integer.MAX_VALUE) {
@@ -193,7 +193,7 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
 
     public int drainTo(Collection<? super E> c) {
         int count = 0;
-        for (BlockingQueueWrapper<E> queue : queueList) {
+        for (BlockingQueueHolder<E> queue : queueList) {
             count += queue.getQueue().drainTo(c);
         }
         return count;
@@ -202,7 +202,7 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
     public int drainTo(Collection<? super E> c, int maxElements) {
         int count = 0;
         int left = maxElements;
-        for (BlockingQueueWrapper<E> queue : queueList) {
+        for (BlockingQueueHolder<E> queue : queueList) {
             count += queue.getQueue().drainTo(c, left);
             left = maxElements - count;
             if (left <= 0) {
@@ -214,19 +214,19 @@ class QueuePool<E> implements Iterable<BlockingQueueWrapper<E>>, MigrationLifecy
 
     public Iterator<E> getElementIterator() {
         return Iterators.concat(queueList.stream()
-                .map(BlockingQueueWrapper::getQueue)
+                .map(BlockingQueueHolder::getQueue)
                 .map(BlockingQueue::iterator).toArray(Iterator[]::new));
     }
 
     @Nonnull
     @Override
-    public Iterator<BlockingQueueWrapper<E>> iterator() {
+    public Iterator<BlockingQueueHolder<E>> iterator() {
         return queueList.iterator();
     }
 
     public int size() {
         return queueList.stream()
-                .map(BlockingQueueWrapper::getQueue)
+                .map(BlockingQueueHolder::getQueue)
                 .mapToInt(BlockingQueue::size).sum();
     }
 

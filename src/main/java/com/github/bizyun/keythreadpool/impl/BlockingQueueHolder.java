@@ -13,9 +13,9 @@ import org.slf4j.LoggerFactory;
 /**
  * @author zhangbiyun
  */
-class BlockingQueueWrapper<E> implements MigrationLifecycle {
+class BlockingQueueHolder<E> implements MigrationLifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger(BlockingQueueWrapper.class);
+    private static final Logger logger = LoggerFactory.getLogger(BlockingQueueHolder.class);
 
     private final int poolId;
     private final int queueId;
@@ -24,7 +24,7 @@ class BlockingQueueWrapper<E> implements MigrationLifecycle {
     private final AtomicReference<Thread> bindThread = new AtomicReference<>();
     private final AtomicInteger state = new AtomicInteger(NORMAL);
 
-    public BlockingQueueWrapper(BlockingQueue<E> queue, int poolId, int queueId) {
+    public BlockingQueueHolder(BlockingQueue<E> queue, int poolId, int queueId) {
         this.poolId = poolId;
         this.queueId = queueId;
         this.queue = new BlockingQueueProxy<>(queue);
@@ -40,7 +40,7 @@ class BlockingQueueWrapper<E> implements MigrationLifecycle {
         return result;
     }
 
-    BlockingQueueWrapper<E> unbind() {
+    BlockingQueueHolder<E> unbind() {
         boolean result = bindThread.compareAndSet(Thread.currentThread(), null);
         assert result;
         debugLog(logger, "[unbind-queue], {}", this);
@@ -54,7 +54,7 @@ class BlockingQueueWrapper<E> implements MigrationLifecycle {
     @Override
     public String toString() {
         Thread thread = bindThread.get();
-        return "BlockingQueueWrapper{" +
+        return "BlockingQueueHolder{" +
                 "poolId=" + poolId +
                 ", queueId=" + queueId +
                 ", queue.size=" + queue.size() +

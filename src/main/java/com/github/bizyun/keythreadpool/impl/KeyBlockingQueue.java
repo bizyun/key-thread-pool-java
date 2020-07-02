@@ -80,11 +80,11 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
 
 
     private <T extends Throwable> boolean addAndMark(Runnable runnable,
-            ThrowablePredicate<BlockingQueueWrapper<Runnable>, T> predicate) throws T {
+            ThrowablePredicate<BlockingQueueHolder<Runnable>, T> predicate) throws T {
         while (true) {
             isExpandOrShrink();
             QueuePool<Runnable> pool = queuePool();
-            BlockingQueueWrapper<Runnable> queue = pool.selectQueue(getKey(runnable));
+            BlockingQueueHolder<Runnable> queue = pool.selectQueue(getKey(runnable));
             if (!predicate.test(queue)) {
                 return false;
             }
@@ -98,7 +98,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         }
     }
 
-    private boolean removeFromQueue(Runnable runnable, BlockingQueueWrapper<Runnable> queue) {
+    private boolean removeFromQueue(Runnable runnable, BlockingQueueHolder<Runnable> queue) {
         if (queue.getQueue().remove(runnable)) {
             debugLog(logger, "[producer] put to a migrating or migrated queue, remove success, {}",
                     queue);
@@ -130,7 +130,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         while (true) {
             tryExpandOrShrink();
             QueuePool<Runnable> pool = queuePool();
-            BlockingQueueWrapper<Runnable> queue = pool.bindQueueBlock();
+            BlockingQueueHolder<Runnable> queue = pool.bindQueueBlock();
             if (isMigratedThenUnbind(pool, queue)) {
                 continue;
             }
@@ -151,7 +151,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         }
     }
 
-    private boolean isMigratedThenUnbind(QueuePool<Runnable> pool, BlockingQueueWrapper<Runnable> queue) {
+    private boolean isMigratedThenUnbind(QueuePool<Runnable> pool, BlockingQueueHolder<Runnable> queue) {
         assert !queue.isMigrating();
         if (queue.isMigrated()) {
             debugLog(logger, "[consumer] bind a migrated queue, just unbind to continue, {}",
@@ -168,7 +168,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         while (true) {
             tryExpandOrShrink();
             QueuePool<Runnable> pool = queuePool();
-            BlockingQueueWrapper<Runnable> queue = pool.bindQueue(timeout, unit);
+            BlockingQueueHolder<Runnable> queue = pool.bindQueue(timeout, unit);
             if (queue == null) {
                 return null;
             }
@@ -199,7 +199,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         while (true) {
             tryExpandOrShrink();
             QueuePool<Runnable> pool = queuePool();
-            BlockingQueueWrapper<Runnable> queue = pool.bindQueue();
+            BlockingQueueHolder<Runnable> queue = pool.bindQueue();
             if (queue == null) {
                 return null;
             }
@@ -237,7 +237,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
 
     private void doMigrate(QueuePool<Runnable> pool) {
         while (true) {
-            BlockingQueueWrapper<Runnable> queue = pool.bindQueueForMigrating();
+            BlockingQueueHolder<Runnable> queue = pool.bindQueueForMigrating();
             if (queue != null) {
                 try {
                     migrateOneQueue(queue);
@@ -267,12 +267,12 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         }
     }
 
-    private void migrateOneQueue(BlockingQueueWrapper<Runnable> queue) {
+    private void migrateOneQueue(BlockingQueueHolder<Runnable> queue) {
         QueuePool<Runnable> backupPool = this.backupQueuePoolSupplier.get();
         queue.startMigrating();
         debugLog(logger, "[migrateOneQueue] {}", queue);
         for (Runnable r; (r = queue.getQueue().poll()) != null; ) {
-            BlockingQueueWrapper<Runnable> backupQueue = backupPool.selectQueue(getKey(r));
+            BlockingQueueHolder<Runnable> backupQueue = backupPool.selectQueue(getKey(r));
             if (!backupQueue.getQueue().offer(r)) {
                 debugLog(logger, "[migrateOneQueue] queue is full, {}", queue);
                 continue;
@@ -314,7 +314,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
     @Override
     public boolean remove(Object o) {
         if (o instanceof KeySupplier) {
-            BlockingQueueWrapper<Runnable> queue = queuePool().selectQueue(((KeySupplier) o).getKey());
+            BlockingQueueHolder<Runnable> queue = queuePool().selectQueue(((KeySupplier) o).getKey());
             return queue.getQueue().remove(o);
         }
         return false;
@@ -326,7 +326,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
 
     @Override
     public Runnable poll(@Nonnull KeySupplier keySupplier) {
-        BlockingQueueWrapper<Runnable> queue = queuePool().selectQueue(keySupplier.getKey());
+        BlockingQueueHolder<Runnable> queue = queuePool().selectQueue(keySupplier.getKey());
         return queue.getQueue().poll();
     }
 }
