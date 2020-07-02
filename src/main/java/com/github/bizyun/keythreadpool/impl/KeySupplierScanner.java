@@ -44,20 +44,23 @@ class KeySupplierScanner {
             if (!isAccessible) {
                 field.setAccessible(true);
             }
+            T o;
             try {
-                T o = matchClass.cast(field.get(obj));
+                o = matchClass.cast(field.get(obj));
+            } catch (IllegalAccessException e) {
+                return null;
+            } finally {
                 if (!isAccessible) {
                     field.setAccessible(false);
                 }
-                if (o instanceof KeySupplier) {
-                    return (KeySupplier) o;
-                }
-                if (!scannedObjects.contains(o)) {
-                    scannedObjects.add(o);
-                    return scan(o);
-                }
-            } catch (IllegalAccessException e) {
-                return null;
+            }
+
+            if (o instanceof KeySupplier) {
+                return (KeySupplier) o;
+            }
+            if (!scannedObjects.contains(o)) {
+                scannedObjects.add(o);
+                return scan(o);
             }
         }
         return null;
