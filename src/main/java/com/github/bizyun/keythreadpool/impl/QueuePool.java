@@ -37,6 +37,9 @@ class QueuePool<E> implements Iterable<BlockingQueueHolder<E>>, MigrationLifecyc
     private final List<BlockingQueueHolder<E>> queueList;
     private final BlockingQueue<BlockingQueueHolder<E>> qq;
 
+    private final AtomicInteger migratedQueueCount = new AtomicInteger();
+    private volatile BlockingQueue<BlockingQueueHolder<E>> needMigratedQueueList;
+
     public QueuePool(Supplier<BlockingQueue<E>> queueSupplier, int queueCount) {
         this.poolId = POOL_ID.getAndIncrement();
         List<BlockingQueueHolder<E>> qList = new ArrayList<>(queueCount);
@@ -98,23 +101,6 @@ class QueuePool<E> implements Iterable<BlockingQueueHolder<E>>, MigrationLifecyc
         });
     }
 
-    @Nullable
-    public BlockingQueueHolder<E> bindQueueForMigrating() {
-        assert isMigrating() || isMigrated();
-        for (BlockingQueueHolder<E> queue : queueList) {
-            if (queue.isMigrating() || queue.isMigrated()) {
-                continue;
-            }
-            if (!queue.bind()) {
-                debugLog(logger, "[bindQueueForMigrating] queue is bound, pool-{}, {}", poolId
-                        , queue);
-                continue;
-            }
-            return queue;
-        }
-        return null;
-    }
-
     private <T extends Throwable> BlockingQueueHolder<E> doBindQueue(
             ThrowableSupplier<BlockingQueueHolder<E>, T> queueSupplier) throws T {
         outer:
@@ -174,6 +160,61 @@ class QueuePool<E> implements Iterable<BlockingQueueHolder<E>>, MigrationLifecyc
         }
     }
 
+    @Nullable
+    public BlockingQueueHolder<E> bindQueueForMigrating() {
+        assert isMigrating() || isMigrated();
+        if (needMigratedQueueList == null) {
+            return null;
+        }
+        BlockingQueueHolder<E> queue = needMigratedQueueList.poll();
+        if (queue == null) {
+            return null;
+        }
+        assert !(queue.isMigrating() || queue.isMigrated());
+
+        if (!queue.bind()) {
+            debugLog(logger, "[bindQueueForMigrating] queue is bound, pool-{}, {}", poolId
+                    , queue);
+            needMigratedQueueList.offer(queue);
+            return null;
+        }
+        return queue;
+    }
+
+    public void increaseMigratedQueueCount() {
+        migratedQueueCount.incrementAndGet();
+    }
+
+    public boolean allQueueMigrated() {
+        return migratedQueueCount.get() == queueList.size();
+    }
+
+    @Override
+    public boolean isMigrating() {
+        return state.get() == MIGRATING;
+    }
+
+    @Override
+    public boolean isMigrated() {
+        return state.get() == MIGRATED;
+    }
+
+    @Override
+    public void startMigrating() {
+        boolean result = state.compareAndSet(NORMAL, MIGRATING);
+        if (result) {
+            needMigratedQueueList = new LinkedBlockingQueue<>(queueList);
+        }
+    }
+
+    @Override
+    public void stopMigrating() {
+        boolean result = state.compareAndSet(MIGRATING, MIGRATED);
+        if (result) {
+            qq.offer(queueList.get(0));
+        }
+    }
+
     public void clear() {
         for (BlockingQueueHolder<E> queue : queueList) {
             queue.getQueue().clear();
@@ -230,32 +271,6 @@ class QueuePool<E> implements Iterable<BlockingQueueHolder<E>>, MigrationLifecyc
                 .mapToInt(BlockingQueue::size).sum();
     }
 
-    public boolean allQueueMigrated() {
-        return !queueList.stream().filter(queue -> !queue.isMigrated()).findAny().isPresent();
-    }
-
-    @Override
-    public boolean isMigrating() {
-        return state.get() == MIGRATING;
-    }
-
-    @Override
-    public boolean isMigrated() {
-        return state.get() == MIGRATED;
-    }
-
-    @Override
-    public void startMigrating() {
-        state.compareAndSet(NORMAL, MIGRATING);
-    }
-
-    @Override
-    public void stopMigrating() {
-        boolean result = state.compareAndSet(MIGRATING, MIGRATED);
-        if (result) {
-            qq.offer(queueList.get(0));
-        }
-    }
 
     public int getPoolId() {
         return poolId;

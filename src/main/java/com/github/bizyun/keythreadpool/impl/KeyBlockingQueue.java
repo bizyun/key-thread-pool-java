@@ -127,95 +127,69 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
     @Nonnull
     @Override
     public Runnable take() throws InterruptedException {
-        while (true) {
-            tryExpandOrShrink();
-            QueuePool<Runnable> pool = queuePool();
-            BlockingQueueHolder<Runnable> queue = pool.bindQueueBlock();
-            if (isMigratedThenUnbind(pool, queue)) {
-                continue;
-            }
-            Runnable runnable;
-            try {
-                runnable = queue.getQueue().take();
-            } catch (InterruptedException e) {
-                pool.unbindQueue(queue);
-                throw e;
-            }
-            return () -> {
-                try {
-                    runnable.run();
-                } finally {
-                    pool.unbindQueue(queue);
-                }
-            };
-        }
-    }
-
-    private boolean isMigratedThenUnbind(QueuePool<Runnable> pool, BlockingQueueHolder<Runnable> queue) {
-        assert !queue.isMigrating();
-        if (queue.isMigrated()) {
-            debugLog(logger, "[consumer] bind a migrated queue, just unbind to continue, {}",
-                    queue);
+        tryExpandOrShrink();
+        QueuePool<Runnable> pool = queuePool();
+        BlockingQueueHolder<Runnable> queue = pool.bindQueueBlock();
+        Runnable runnable;
+        try {
+            runnable = queue.getQueue().take();
+        } catch (InterruptedException e) {
             pool.unbindQueue(queue);
-            return true;
+            throw e;
         }
-        return false;
+        return () -> {
+            try {
+                runnable.run();
+            } finally {
+                pool.unbindQueue(queue);
+            }
+        };
     }
 
     @Nullable
     @Override
     public Runnable poll(long timeout, @Nonnull TimeUnit unit) throws InterruptedException {
-        while (true) {
-            tryExpandOrShrink();
-            QueuePool<Runnable> pool = queuePool();
-            BlockingQueueHolder<Runnable> queue = pool.bindQueue(timeout, unit);
-            if (queue == null) {
-                return null;
-            }
-            if (isMigratedThenUnbind(pool, queue)) {
-                continue;
-            }
-            Runnable runnable;
-            try {
-                runnable = queue.getQueue().poll(timeout, unit);
-                assert runnable != null;
-            } catch (InterruptedException e) {
-                pool.unbindQueue(queue);
-                throw e;
-            }
-            return () -> {
-                try {
-                    runnable.run();
-                } finally {
-                    pool.unbindQueue(queue);
-                }
-            };
+        tryExpandOrShrink();
+        QueuePool<Runnable> pool = queuePool();
+        BlockingQueueHolder<Runnable> queue = pool.bindQueue(timeout, unit);
+        if (queue == null) {
+            return null;
         }
+        Runnable runnable;
+        try {
+            runnable = queue.getQueue().poll(timeout, unit);
+            assert runnable != null;
+        } catch (InterruptedException e) {
+            pool.unbindQueue(queue);
+            throw e;
+        }
+        return () -> {
+            try {
+                runnable.run();
+            } finally {
+                pool.unbindQueue(queue);
+            }
+        };
     }
 
     @Nullable
     @Override
     public Runnable poll() {
-        while (true) {
-            tryExpandOrShrink();
-            QueuePool<Runnable> pool = queuePool();
-            BlockingQueueHolder<Runnable> queue = pool.bindQueue();
-            if (queue == null) {
-                return null;
-            }
-            if (isMigratedThenUnbind(pool, queue)) {
-                continue;
-            }
-            Runnable runnable = queue.getQueue().poll();
-            assert runnable != null;
-            return () -> {
-                try {
-                    runnable.run();
-                } finally {
-                    pool.unbindQueue(queue);
-                }
-            };
+        tryExpandOrShrink();
+        QueuePool<Runnable> pool = queuePool();
+        BlockingQueueHolder<Runnable> queue = pool.bindQueue();
+        if (queue == null) {
+            return null;
         }
+        Runnable runnable = queue.getQueue().poll();
+        assert runnable != null;
+        return () -> {
+            try {
+                runnable.run();
+            } finally {
+                pool.unbindQueue(queue);
+            }
+        };
     }
 
     private void tryExpandOrShrink() {
@@ -239,11 +213,8 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         while (true) {
             BlockingQueueHolder<Runnable> queue = pool.bindQueueForMigrating();
             if (queue != null) {
-                try {
-                    migrateOneQueue(queue);
-                } finally {
-                    pool.unbindQueue(queue);
-                }
+                migrateOneQueue(queue);
+                pool.increaseMigratedQueueCount();
             } else if (pool.allQueueMigrated()) {
                 synchronized (expandOrShrink) {
                     if (!pool.isMigrated()) {
@@ -262,7 +233,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
                     return;
                 }
             } else {
-                Uninterruptibles.sleepUninterruptibly(10, TimeUnit.MILLISECONDS);
+                Uninterruptibles.sleepUninterruptibly(5, TimeUnit.MILLISECONDS);
             }
         }
     }

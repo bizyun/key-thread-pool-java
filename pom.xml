@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.bizyun</groupId>
     <artifactId>key-thread-pool</artifactId>
-    <version>0.1.1-SNAPSHOT</version>
+    <version>0.1.2-SNAPSHOT</version>
 
     <prerequisites>
         <maven>3.0.4</maven>
