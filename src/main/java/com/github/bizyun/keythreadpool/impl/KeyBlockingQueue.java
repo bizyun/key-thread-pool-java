@@ -130,6 +130,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         tryExpandOrShrink();
         QueuePool<Runnable> pool = queuePool();
         BlockingQueueHolder<Runnable> queue = pool.bindQueueBlock();
+        assert !queue.isMigrating() && !queue.isMigrated();
         Runnable runnable;
         try {
             runnable = queue.getQueue().take();
@@ -155,6 +156,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         if (queue == null) {
             return null;
         }
+        assert !queue.isMigrating() && !queue.isMigrated();
         Runnable runnable;
         try {
             runnable = queue.getQueue().poll(timeout, unit);
@@ -181,6 +183,7 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         if (queue == null) {
             return null;
         }
+        assert !queue.isMigrating() && !queue.isMigrated();
         Runnable runnable = queue.getQueue().poll();
         assert runnable != null;
         return () -> {

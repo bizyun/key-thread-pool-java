@@ -493,7 +493,7 @@ class KeyThreadPoolExecutorTest {
         long key = 37;
         AtomicInteger runTaskCount = new AtomicInteger();
         keyExecutor.execute(new TestKeyRunnable(key, runTaskCount, 12, consumerRecords));
-        while (runTaskCount.get() == 1);
+        while (runTaskCount.get() != 1);
         queueCount.set(10);
         for (int i = 0; i < 1000; i++) {
             keyExecutor.execute(new TestKeyRunnable(key, runTaskCount, i, consumerRecords));
