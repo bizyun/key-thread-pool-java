@@ -258,8 +258,6 @@ class KeyBlockingQueue extends AbstractQueue<Runnable> implements BlockingQueue<
         queue.stopMigrating();
     }
 
-
-
     @Override
     public Runnable peek() {
         return queuePool().peek();

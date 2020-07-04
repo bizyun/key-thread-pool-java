@@ -508,6 +508,41 @@ class KeyThreadPoolExecutorTest {
         assertNull(records.poll());
     }
 
+    @Test
+    void test9() {
+        AtomicInteger queueCount = new AtomicInteger(2);
+        AtomicInteger queueCapacity = new AtomicInteger(1);
+        KeyThreadPoolExecutor keyExecutor = newKeyThreadPool(() -> 100,
+                () -> new LinkedBlockingQueue<>(queueCapacity.get()),
+                queueCount::get);
+        ConcurrentHashMap<Long, LinkedBlockingQueue<Integer>> consumerRecords = new ConcurrentHashMap<>();
+        long key1 = 37;
+        AtomicInteger runTaskCount = new AtomicInteger();
+        TestKeyRunnable command = new TestKeyRunnable(key1, runTaskCount, 12, consumerRecords);
+        CountDownLatch latch = new CountDownLatch(1);
+        keyExecutor.execute(() -> {
+            command.run();
+            Uninterruptibles.awaitUninterruptibly(latch);
+        });
+        while (runTaskCount.get() != 1);
+        queueCount.set(10);
+        long key2 = 38;
+        keyExecutor.execute(new TestKeyRunnable(key2, runTaskCount, 8, consumerRecords));
+        Uninterruptibles.sleepUninterruptibly(1, TimeUnit.SECONDS);
+        latch.countDown();
+        Uninterruptibles.sleepUninterruptibly(500, TimeUnit.MILLISECONDS);
+        MoreExecutors.shutdownAndAwaitTermination(keyExecutor, 1, TimeUnit.MINUTES);
+
+        assertEquals(2, consumerRecords.size());
+        assertEquals(keyExecutor.getCompletedTaskCount(), runTaskCount.get());
+        LinkedBlockingQueue<Integer> records = consumerRecords.get(key1);
+        assertEquals(12, records.poll());
+        records = consumerRecords.get(key2);
+        assertEquals(8, records.poll());
+        assertNull(records.poll());
+
+    }
+
     private void checkQueue(BlockingQueue<Runnable> queue, int i2, int i3) {
         assertEquals(2, queue.size());
         Iterator<Runnable> iterator = queue.iterator();
