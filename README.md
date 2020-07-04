@@ -29,7 +29,20 @@ keyExecutor.execute(new KeyRunnable() {
             public void run() {
             }
         });
-        
+
+KeyRunnable keyRunnable = new KeyRunnable() {
+            @Override
+            public long getKey() {
+                return 0;
+            }
+
+            @Override
+            public void run() {
+
+            }
+        };
+keyExecutor.execute(keyRunnable::run);
+
 keyExecutor.submit(new KeyCallable<Void>() {
             @Override
             public long getKey() { // the key of the callable
