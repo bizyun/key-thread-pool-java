@@ -490,23 +490,22 @@ class KeyThreadPoolExecutorTest {
                 () -> new LinkedBlockingQueue<>(queueCapacity.get()),
                 queueCount::get);
         ConcurrentHashMap<Long, LinkedBlockingQueue<Integer>> consumerRecords = new ConcurrentHashMap<>();
-        long key = 37;
+        long key1 = 37;
         AtomicInteger runTaskCount = new AtomicInteger();
-        keyExecutor.execute(new TestKeyRunnable(key, runTaskCount, 12, consumerRecords));
+        keyExecutor.execute(new TestKeyRunnable(key1, runTaskCount, 12, consumerRecords));
         while (runTaskCount.get() != 1);
         queueCount.set(10);
-        for (int i = 0; i < 1000; i++) {
-            keyExecutor.execute(new TestKeyRunnable(key, runTaskCount, i, consumerRecords));
-        }
+        long key2 = key1;
+        keyExecutor.execute(new TestKeyRunnable(key2, runTaskCount, 8, consumerRecords));
         MoreExecutors.shutdownAndAwaitTermination(keyExecutor, 1, TimeUnit.MINUTES);
 
         assertEquals(1, consumerRecords.size());
         assertEquals(keyExecutor.getCompletedTaskCount(), runTaskCount.get());
-        LinkedBlockingQueue<Integer> records = consumerRecords.get(key);
+        LinkedBlockingQueue<Integer> records = consumerRecords.get(key1);
         assertEquals(12, records.poll());
-        for (int j = 0; j < 1000; j++) {
-            assertEquals(j, records.poll());
-        }
+        records = consumerRecords.get(key2);
+        assertEquals(8, records.poll());
+        assertNull(records.poll());
     }
 
     private void checkQueue(BlockingQueue<Runnable> queue, int i2, int i3) {
