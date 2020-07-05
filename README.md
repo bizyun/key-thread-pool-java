@@ -30,18 +30,11 @@ keyExecutor.execute(new KeyRunnable() {
             }
         });
 
-KeyRunnable keyRunnable = new KeyRunnable() {
-            @Override
-            public long getKey() {
-                return 0;
-            }
-
-            @Override
-            public void run() {
-
-            }
-        };
-keyExecutor.execute(keyRunnable::run);
+KeySupplier keySupplier = () -> k;
+keyExecutor.execute(() -> {
+            KeySupplier ks = keySupplier;
+            // do something
+        });
 
 keyExecutor.submit(new KeyCallable<Void>() {
             @Override

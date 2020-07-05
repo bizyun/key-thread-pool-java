@@ -455,21 +455,15 @@ class KeyThreadPoolExecutorTest {
         AtomicInteger runTaskCount = new AtomicInteger();
         for (int i = 0; i < 50; i++) {
             final int k = i;
-            keyExecutor.execute(new KeyRunnable() {
-                @Override
-                public long getKey() {
-                    return k;
-                }
-
-                @Override
-                public void run() {
-                    try {
-                        latch1.countDown();
-                        latch.await();
-                        runTaskCount.getAndIncrement();
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
+            KeySupplier keySupplier = () -> k;
+            keyExecutor.execute(() -> {
+                try {
+                    latch1.countDown();
+                    latch.await();
+                    runTaskCount.getAndIncrement();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    KeySupplier ks = keySupplier;
                 }
             });
         }
