@@ -11,7 +11,7 @@
 
     <properties>
         <slf4j-api.version>1.7.21</slf4j-api.version>
-        <guava.version>28.1-jre</guava.version>
+        <guava.version>29.0-jre</guava.version>
         <more-lambdas.version>0.1.36</more-lambdas.version>
         <commons-lang3.version>3.8.1</commons-lang3.version>
 
